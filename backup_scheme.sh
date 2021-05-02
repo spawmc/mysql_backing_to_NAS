@@ -44,7 +44,7 @@ copy_cnf_to_shared_resource(){
 
 generate_data_backup(){
     echo "Generando backup de datos"
-    
+    mysqldump --defaults-file=$DB_MY_CNF -u $DB_USER --all-databases | gzip > $FILE_NAME.gz
 }
 
 make_dir(){
@@ -85,34 +85,32 @@ send_mail(){
 }
 
 usage(){
-   echo -e "mUsage: $0 [options] [--]
+   echo -e "Usage: $0 [options] [--]
     Options:
     -h|help       Display this message
     -s|scheme     Genera backup solo del esquema
+    -d|data       Genera backup de datos de toda las bases de datos
     -f|full       Genera un backup comleto de todas las bases de datos y archivos de configuración
     "
 }
 
 mysql_status(){
     mysql $>/dev/null
+    if $? -eq 1 ; then
+        echo -e "\n${red}[-]${resetc} MySql not runnig"
+        exit 1;
+    else
+        echo -e "\n${green}[+]${resetc} MySql runnig"
+    fi
 }
 
-
-main(){
-    status=$?
-    if ! status -eq 0 ; then
-        echo -e "\n${red}[-]${resetc}"
-    else
-        echo -e "\n${green}[+]${resetc}"
-    fi
-
-
-    while getopts ":h:s" opt ; do
+    while getopts ":h:s:f:d" opt ; do
         case ${opt} in
             h|help)
                 usage; exit 0
                 ;;
             s|scheme)
+                mysql_status
                 generate_schema_backup
                 make_dir
                 mount_shared_resource
@@ -120,6 +118,7 @@ main(){
                 send_mail
                 ;;
             f|full)
+                mysql_status
                 generate_full_backup
                 make_dir
                 mount_shared_resource
@@ -127,15 +126,16 @@ main(){
                 copy_cnf_to_shared_resource
                 send_mail
                 ;;
-
+            d|data)
+                mysql_status
+                generate_data_backup
+                make_dir
+                mount_shared_resource
+                FILE_NAME=${FILE_NAME}.gz
+                copy_to_shared_resource
+                send_mail
         esac
     done
 
     shift $(($OPTIND-1))
 
-}
-
-
-
-
-main
