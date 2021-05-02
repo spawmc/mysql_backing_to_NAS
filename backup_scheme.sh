@@ -14,6 +14,15 @@ SHARE_MOUNT_DIR=/mnt/sambashare
 MAIL_MSG="El backup se ha generado con éxito y se encuentra actualmente en el recurso compartido"
 MAIL_DEST="spawnmcsqrt@gmail.com"
 
+green="\e[0;32m\033[1m"
+resetc="\033[0m\e[0m"
+red="\e[0;31m\033[1m"
+blue="\e[0;34m\033[1m"
+yellow="\e[0;33m\033[1m"
+purple="\e[0;35m\033[1m"
+turquoise="\e[0;36m\033[1m"
+gray="\e[0;37m\033[1m"
+
 generete_backup(){
     echo "Generando backup..."
     mysqldump --defaults-file=$DB_MY_CNF -u $DB_USER $DB_NAME --no-data --skip-comments --routines > $FILE_NAME
@@ -57,3 +66,6 @@ send_mail(){
     fi
 }
 
+usage (){
+ 
+}
