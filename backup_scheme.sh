@@ -11,8 +11,10 @@ SMB_FOLDER="sambashare"
 SMB_USER="spawnmc"
 SMB_PASSWD="joshuan9819"
 SHARE_MOUNT_DIR=/mnt/sambashare
-MAIL_MSG="El backup se ha generado con éxito y se encuentra actualmente en el recurso compartido"
 MAIL_DEST="spawnmcsqrt@gmail.com"
+CNF_FILE=/etc/mysql/my.cnf
+CNF_BACKUP_NAME=my.cnf.${DATE}.backup
+MAIL_MSG="El backup se ha generado con éxito y se encuentra actualmente en el recurso compartido"
 
 green="\e[0;32m\033[1m"
 resetc="\033[0m\e[0m"
@@ -23,11 +25,27 @@ purple="\e[0;35m\033[1m"
 turquoise="\e[0;36m\033[1m"
 gray="\e[0;37m\033[1m"
 
-generete_backup(){
-    echo "Generando backup..."
+generate_schema_backup(){
+    echo "Generando backup del esquema"
     mysqldump --defaults-file=$DB_MY_CNF -u $DB_USER $DB_NAME --no-data --skip-comments --routines > $FILE_NAME
 }
 
+generate_full_backup(){
+    echo "Generando backup completo"
+    cp $CNF_FILE $CNF_BACKUP_NAME
+    mysqldump --defaults-file=$DB_MY_CNF -u $DB_USER --all-databases > $FILE_NAME
+}
+
+copy_cnf_to_shared_resource(){
+    if cp $CNF_BACKUP_NAME $SHARE_MOUNT_DIR -f ; then
+        rm $CNF_BACKUP_NAME
+    fi
+}
+
+generate_data_backup(){
+    echo "Generando backup de datos"
+    
+}
 
 make_dir(){
     if [[ -d $SHARE_MOUNT_DIR ]] ; then
@@ -66,6 +84,58 @@ send_mail(){
     fi
 }
 
-usage (){
- 
+usage(){
+   echo -e "mUsage: $0 [options] [--]
+    Options:
+    -h|help       Display this message
+    -s|scheme     Genera backup solo del esquema
+    -f|full       Genera un backup comleto de todas las bases de datos y archivos de configuración
+    "
 }
+
+mysql_status(){
+    mysql $>/dev/null
+}
+
+
+main(){
+    status=$?
+    if ! status -eq 0 ; then
+        echo -e "\n${red}[-]${resetc}"
+    else
+        echo -e "\n${green}[+]${resetc}"
+    fi
+
+
+    while getopts ":h:s" opt ; do
+        case ${opt} in
+            h|help)
+                usage; exit 0
+                ;;
+            s|scheme)
+                generate_schema_backup
+                make_dir
+                mount_shared_resource
+                copy_to_shared_resource
+                send_mail
+                ;;
+            f|full)
+                generate_full_backup
+                make_dir
+                mount_shared_resource
+                copy_to_shared_resource
+                copy_cnf_to_shared_resource
+                send_mail
+                ;;
+
+        esac
+    done
+
+    shift $(($OPTIND-1))
+
+}
+
+
+
+
+main
